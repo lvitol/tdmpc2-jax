@@ -5,7 +5,6 @@ import flax.linen as nn
 import jax.numpy as jnp
 import jax
 
-
 class NormedLinear(nn.Module):
   features: int
   activation: Callable[[jax.Array], jax.Array] = None
@@ -30,6 +29,6 @@ class NormedLinear(nn.Module):
       x = self.activation(x)
 
     if self.dropout_rate is not None and self.dropout_rate > 0:
-      x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=not training)
+      x = nn.Dropout(rate=self.dropout_rate, deterministic=not training)(x)
 
     return x

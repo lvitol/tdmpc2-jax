@@ -188,7 +188,7 @@ class TDMPC2(struct.PyTreeNode):
       actions = actions.clip(-1, 1)
 
       # Compute elite actions
-      value = self.estimate_value(z, actions, key=value_keys[i])
+      value = self.estimate_value(z, actions, key=value_keys[i], training=train)
       value = jnp.nan_to_num(value)
       _, elite_inds = jax.lax.top_k(value, self.num_elites)
       elite_values, elite_actions = value[elite_inds], actions[:, elite_inds]
@@ -242,7 +242,7 @@ class TDMPC2(struct.PyTreeNode):
       finished = jnp.zeros((self.horizon+1, self.batch_size), dtype=bool)
 
       next_z = sg(self.model.encode(next_observations, encoder_params))
-      td_targets = self.td_target(next_z, rewards, terminated, key=target_key)
+      td_targets = self.td_target(next_z, rewards, terminated, target_key, True)
 
       # Latent rollout (compute latent dynamics + consistency loss)
       zs = jnp.zeros((self.horizon+1, self.batch_size, next_z.shape[-1]))
@@ -260,7 +260,7 @@ class TDMPC2(struct.PyTreeNode):
         finished = finished.at[t+1].set(jnp.logical_or(finished[t], done[t]))
 
       # Get logits for loss computations
-      _, q_logits = self.model.Q(zs[:-1], actions, value_params, key=Q_key)
+      _, q_logits = self.model.Q(zs[:-1], actions, value_params, Q_key, True)
       _, reward_logits = self.model.reward(zs[:-1], actions, reward_params)
       if self.model.predict_continues:
         continue_logits = self.model.continue_model.apply_fn(
@@ -342,7 +342,7 @@ class TDMPC2(struct.PyTreeNode):
           zs, params, key=action_key)
 
       # Compute Q-values
-      Qs, _ = self.model.Q(zs, actions, new_value_model.params, key=Q_key)
+      Qs, _ = self.model.Q(zs, actions, new_value_model.params, key=Q_key, training=True)
       Q = Qs.mean(axis=0)
       # Update and apply scale
       scale = percentile_normalization(Q[0], self.scale).clip(1, None)
@@ -371,8 +371,8 @@ class TDMPC2(struct.PyTreeNode):
 
     return new_agent, info
 
-  @jax.jit
-  def estimate_value(self, z: jax.Array, actions: jax.Array, key: PRNGKeyArray) -> jax.Array:
+  @partial(jax.jit, static_argnums=(3,))
+  def estimate_value(self, z: jax.Array, actions: jax.Array, key: PRNGKeyArray, training) -> jax.Array:
     G, discount = 0.0, 1.0
     for t in range(self.horizon):
       reward, _ = self.model.reward(
@@ -393,13 +393,13 @@ class TDMPC2(struct.PyTreeNode):
         z, self.model.policy_model.params, key=action_key)[0]
 
     Qs, _ = self.model.Q(
-        z, next_action, self.model.value_model.params, key=Q_key)
+        z, next_action, self.model.value_model.params, key=Q_key, training=training)
     Q = Qs.mean(axis=0)
     return sg(G + discount * Q)
 
-  @jax.jit
+  @partial(jax.jit, static_argnums=(4,))
   def td_target(self, next_z: jax.Array, reward: jax.Array, terminal: jax.Array,
-                key: PRNGKeyArray) -> jax.Array:
+                key: PRNGKeyArray, training) -> jax.Array:
     action_key, ensemble_key, Q_key = jax.random.split(key, 3)
     next_action = self.model.sample_actions(
         next_z, self.model.policy_model.params, key=action_key)[0]
@@ -409,6 +409,6 @@ class TDMPC2(struct.PyTreeNode):
                              jnp.arange(0, self.model.num_value_nets),
                              shape=(2, ), replace=False)
     Qs, _ = self.model.Q(
-        next_z, next_action, self.model.target_value_model.params, key=Q_key)
+        next_z, next_action, self.model.target_value_model.params, Q_key, training)
     Q = Qs[inds].min(axis=0)
     return sg(reward + (1 - terminal) * self.discount * Q)

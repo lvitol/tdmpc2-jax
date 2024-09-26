@@ -127,7 +127,7 @@ class WorldModel(struct.PyTreeNode):
         apply_fn=value_ensemble.apply,
         params=value_ensemble.init(
             {'params': value_param_key, 'dropout': value_dropout_key},
-            jnp.zeros(latent_dim + action_dim))['params'],
+            jnp.zeros(latent_dim + action_dim), True)['params'],
         tx=optax.chain(
             optax.zero_nans(),
             optax.clip_by_global_norm(max_grad_norm),
@@ -255,12 +255,12 @@ class WorldModel(struct.PyTreeNode):
 
     return action, mean, log_std, log_probs
 
-  @jax.jit
-  def Q(self, z: jax.Array, a: jax.Array, params: Dict, key: PRNGKeyArray
+  @partial(jax.jit, static_argnums=(4,))
+  def Q(self, z: jax.Array, a: jax.Array, params: Dict, key: PRNGKeyArray, training
         ) -> Tuple[jax.Array, jax.Array]:
     z = jnp.concatenate([z, a], axis=-1)
     logits = self.value_model.apply_fn(
-        {'params': params}, z, rngs={'dropout': key})
+        {'params': params}, z, training, rngs={'dropout': key})
 
     Q = two_hot_inv(logits, self.symlog_min, self.symlog_max, self.num_bins)
     return Q, logits
