@@ -255,7 +255,7 @@ class WorldModel(struct.PyTreeNode):
 
     return action, mean, log_std, log_probs
 
-  @partial(jax.jit, static_argnums=(4,))
+  @partial(jax.jit, static_argnames=['training'])
   def Q(self, z: jax.Array, a: jax.Array, params: Dict, key: PRNGKeyArray, training
         ) -> Tuple[jax.Array, jax.Array]:
     z = jnp.concatenate([z, a], axis=-1)

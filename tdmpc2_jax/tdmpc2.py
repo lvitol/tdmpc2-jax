@@ -116,8 +116,8 @@ class TDMPC2(struct.PyTreeNode):
 
     return np.array(action), plan
 
-  @jax.jit
   @partial(jax.vmap, in_axes=(None, 0, 0, None, 0), out_axes=0)
+  @partial(jax.jit, static_argnames=['train'])
   def plan(self,
            z: jax.Array,
            prev_plan: Tuple[jax.Array, jax.Array],
@@ -371,7 +371,7 @@ class TDMPC2(struct.PyTreeNode):
 
     return new_agent, info
 
-  @partial(jax.jit, static_argnums=(3,))
+  @partial(jax.jit, static_argnames=['training'])
   def estimate_value(self, z: jax.Array, actions: jax.Array, key: PRNGKeyArray, training) -> jax.Array:
     G, discount = 0.0, 1.0
     for t in range(self.horizon):
@@ -397,7 +397,7 @@ class TDMPC2(struct.PyTreeNode):
     Q = Qs.mean(axis=0)
     return sg(G + discount * Q)
 
-  @partial(jax.jit, static_argnums=(4,))
+  @partial(jax.jit, static_argnames=('training',))
   def td_target(self, next_z: jax.Array, reward: jax.Array, terminal: jax.Array,
                 key: PRNGKeyArray, training) -> jax.Array:
     action_key, ensemble_key, Q_key = jax.random.split(key, 3)
