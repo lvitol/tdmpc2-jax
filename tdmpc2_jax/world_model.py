@@ -60,6 +60,7 @@ class WorldModel(struct.PyTreeNode):
              # Misc
              tabulate: bool = False,
              dtype: jnp.dtype = jnp.float32,
+             training: bool = True,
              *,
              key: PRNGKeyArray,
              ):
@@ -127,7 +128,7 @@ class WorldModel(struct.PyTreeNode):
         apply_fn=value_ensemble.apply,
         params=value_ensemble.init(
             {'params': value_param_key, 'dropout': value_dropout_key},
-            jnp.zeros(latent_dim + action_dim), True)['params'],
+            jnp.zeros(latent_dim + action_dim), training)['params'],
         tx=optax.chain(
             optax.zero_nans(),
             optax.clip_by_global_norm(max_grad_norm),

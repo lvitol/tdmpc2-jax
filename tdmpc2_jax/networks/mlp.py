@@ -27,7 +27,6 @@ class NormedLinear(nn.Module):
 
     if self.activation is not None:
       x = self.activation(x)
-
     if self.dropout_rate is not None and self.dropout_rate > 0:
       x = nn.Dropout(rate=self.dropout_rate, deterministic=not training)(x)
 
