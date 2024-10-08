@@ -7,7 +7,8 @@ from flax import struct
 import numpy as np
 from numpy.typing import ArrayLike
 from tdmpc2_jax.networks import NormedLinear
-from tdmpc2_jax.common.activations import mish, simnorm
+from tdmpc2_jax.common.activations import simnorm
+from jax.nn import mish
 from jaxtyping import PRNGKeyArray
 import jax
 import jax.numpy as jnp

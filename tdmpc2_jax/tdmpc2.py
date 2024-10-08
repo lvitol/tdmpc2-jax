@@ -4,6 +4,7 @@ from flax import struct
 import jax
 from jaxtyping import PRNGKeyArray
 import optax
+import pdb
 
 from tdmpc2_jax.world_model import WorldModel
 import jax.numpy as jnp
@@ -11,7 +12,7 @@ from tdmpc2_jax.common.loss import soft_crossentropy
 import numpy as np
 from typing import Any, Dict, Optional, Tuple
 from tdmpc2_jax.common.scale import percentile_normalization
-from tdmpc2_jax.common.util import sg
+from tdmpc2_jax.common.util import sg, breakpoint_if_nan
 
 
 class TDMPC2(struct.PyTreeNode):
@@ -288,6 +289,7 @@ class TDMPC2(struct.PyTreeNode):
       else:
         continue_loss = 0
 
+      #breakpoint_if_nan(reward_loss) 
       consistency_loss = consistency_loss / self.horizon
       reward_loss = reward_loss / self.horizon
       value_loss = value_loss / self.horizon / self.model.num_value_nets

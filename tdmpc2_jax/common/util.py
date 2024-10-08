@@ -2,6 +2,14 @@ import jax.numpy as jnp
 import jax
 
 
+def breakpoint_if_nan(x):
+  is_finite = jnp.isfinite(x).all()
+  def true_fn(x):
+    pass
+  def false_fn(x):
+    jax.debug.breakpoint()
+  jax.lax.cond(is_finite, true_fn, false_fn, x)
+
 def symlog(x: jax.Array) -> jax.Array:
   return jnp.sign(x) * jnp.log(1 + jnp.abs(x))
 
